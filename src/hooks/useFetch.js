@@ -1,69 +1,50 @@
-import React, { useEffect, useState } from 'react';
+export const useFetch = () => {
+    const fetchData = async (url, method, data) => {
+        try {
+            const options = {
+                method,
+                headers: new Headers({
+                    "Accept": "*/*",
+                    "Content-Type": "application/json",
+                    "User-Agent": "Thunder Client (https://www.thunderclient.com)",
+                }),
+            };
 
-const useFetch = (url, metodo = 'GET', body = null) => {
-    const [state, setState] = useState({
-        data: null,
-        isLoading: true,
-        hasError: false,
-        error: null,
-    });
+            if (data) {
+                options.body = JSON.stringify(data);
+            }
 
-    const initState = () => {
-        setState({
-            data: null,
-            isLoading: true,
-            hasError: false,
-            error: null,
-        });
+            const response = await fetch(url, options);
+
+            if (!response.ok) {
+                const errorMessage = `Error ${response.status}: ${response.statusText}`;
+                return { error: true, message: errorMessage };
+            }
+
+            const responseData = method !== "DELETE" ? await response.json() : null;
+
+            return {
+                error: false,
+                message: `${method} realizado exitosamente`,
+                data: responseData,
+            };
+        } catch (error) {
+            return {
+                error: true,
+                message: `Ocurrió un error: ${error.message}`,
+            };
+        }
     };
 
-    useEffect(() => {
-        const fetchData = async () => {
-            initState();
-            try {
-                const options = {
-                    method: metodo,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Access-Control-Allow-Origin': '*',
-                    },
-                    ...(body && { body: JSON.stringify(body) }), // Agrega el body si existe
-                };
-
-                const response = await fetch(url, options);
-                
-                if (!response.ok) {
-                    throw new Error(`Error: ${response.status} - ${response.statusText}`);
-                }
-
-                const data = await response.json();
-                setState({
-                    data,
-                    isLoading: false,
-                    hasError: false,
-                    error: null,
-                });
-            } catch (error) {
-                setState({
-                    data: null,
-                    isLoading: false,
-                    hasError: true,
-                    error: {
-                        message: error.message,
-                    },
-                });
-            }
-        };
-
-        fetchData();
-    }, [url, metodo, body]); // Re-executa cuando cambian url, metodo o body
+    const getData = (url) => fetchData(url, "GET");
+    const setData = (url, data) => fetchData(url, "POST", data);
+    const updateData = (url, data) => fetchData(url, "PUT", data);
+    const deleteData = (url) => fetchData(url, "DELETE");
 
     return {
-        data: state.data,
-        isLoading: state.isLoading,
-        hasError: state.hasError,
-        error: state.error,
+        getData,
+        setData,
+        updateData,
+        deleteData,
     };
 };
-
-export default useFetch;
