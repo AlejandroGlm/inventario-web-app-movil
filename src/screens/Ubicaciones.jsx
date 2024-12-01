@@ -19,7 +19,7 @@ export const Ubicaciones = () => {
                 const response = await getData(
                     "http://localhost/codeigniter3-rest-controller/index.php/Api/Ubicacion"
                 );
-                console.log("Datos obtenidos de la API:", response); // Verifica los datos aquí
+                console.log("Datos obtenidos de la API:", response);
                 if (!response.error) {
                     const ubicacionesData = response.data?.data || [];
                     setUbicaciones(ubicacionesData);
@@ -42,12 +42,17 @@ export const Ubicaciones = () => {
 
     // Manejar la edición
     const handleEdit = (ubicacion) => {
+        console.log("Editando ubicación:", ubicacion); 
         setEditData(ubicacion);
         setFormData({
             edificio: ubicacion.edificio,
             departamento: ubicacion.departamento,
             area: ubicacion.area,
         });
+    
+        // Abrir modal de actualización
+        const modal = new window.bootstrap.Modal(document.getElementById("modal-ubicaciones"));
+        modal.show();
     };
 
     const deleteData = async (url) => {
@@ -63,36 +68,58 @@ export const Ubicaciones = () => {
         }
     };
 
-
     // Actualizar ubicación
     const handleActualizarUbicacion = async () => {
-        if (!editData) return;
-
+        console.log("EditData al intentar actualizar:", editData);
+    
+        if (!editData || !editData.id_ubicacion) {
+            alert("ID de ubicación no disponible");
+            return;
+        }
+    
         try {
-            const response = await setData(
-                `http://localhost/codeigniter3-rest-controller/index.php/Api/Ubicacion/${editData.id}`,
-                formData,
-                "PUT" // Especifica el método PUT para la actualización
+            const response = await fetch(
+                `http://localhost/codeigniter3-rest-controller/index.php/Api/Ubicacion/${editData.id_ubicacion}`, // URL con id_ubicacion
+                {
+                    method: 'PUT',  // Coloca el verbo HTTP PUT dentro del objeto de configuración
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData),  
+                }
             );
-
-            console.log("Respuesta de la API:", response);
-
-            if (!response.error) {
+    
+            const data = await response.json();  // Parsear la respuesta JSON
+    
+            console.log("Respuesta de la API:", data);
+    
+            if (!data.error) {
                 alert("Ubicación actualizada correctamente");
+    
+                // Actualizar la lista de ubicaciones en el estado local
                 setUbicaciones((prev) =>
                     prev.map((item) =>
-                        item.id === editData.id ? { ...item, ...formData } : item
+                        item.id_ubicacion === editData.id_ubicacion ? { ...item, ...formData } : item
                     )
                 );
+    
                 setEditData(null);
                 setFormData({ edificio: "", departamento: "", area: "" });
+    
+                // Cerrar el modal después de actualizar
+                const modal = new window.bootstrap.Modal(document.getElementById("modal-ubicaciones"));
+                modal.hide();
             } else {
-                alert("Error al actualizar la ubicación: " + response.message);
+                alert("Error al actualizar la ubicación: " + data.message);
             }
         } catch (error) {
             console.error("Error al actualizar la ubicación:", error);
         }
     };
+    
+    
+    
+    
 
     // Eliminar ubicación
     const handleEliminar = async (id) => {
@@ -108,8 +135,8 @@ export const Ubicaciones = () => {
     
             if (!response.error) {
                 alert("Ubicación eliminada correctamente");
-                // Vuelve a consultar los datos para "refrescar" la tabla
-                fetchUbicaciones();
+                // Refrescar la página después de eliminar
+                window.location.reload();
             } else {
                 alert("Error al eliminar la ubicación: " + response.message);
             }
@@ -117,10 +144,6 @@ export const Ubicaciones = () => {
             console.error("Error al eliminar la ubicación:", error);
         }
     };
-    
-    
-
-   
 
     // Agregar nueva ubicación
     const handleAgregarUbicacion = async () => {
@@ -176,7 +199,7 @@ export const Ubicaciones = () => {
                 </>
             ),
             ignoreRowClick: true,
-            allowOverflow: true,
+            //allowOverflow: true,
         },
     ];
 
@@ -240,9 +263,9 @@ export const Ubicaciones = () => {
                                     </button>
                                     <button
                                         className="btn btn-lg btn-warning float-right"
-                                        onClick={editData ? handleActualizarUbicacion : handleAgregarUbicacion}
+                                        onClick={handleAgregarUbicacion}
                                     >
-                                        {editData ? "Actualizar" : "Aceptar"}
+                                        {"Aceptar"}
                                     </button>
                                 </div>
                             </div>
@@ -263,6 +286,95 @@ export const Ubicaciones = () => {
                 </section>
             </div>
             <Footer />
+
+            <div
+                className="modal fade"
+                id="modal-ubicaciones"
+                tabIndex="-1"
+                role="dialog"
+                aria-labelledby="modal-ubicaciones-label"
+                aria-hidden="true"
+            >
+                <div className="modal-dialog" role="document">
+                    <div className="modal-content bg-warning">
+                        <div className="modal-header">
+                            <h5 className="modal-title" id="modal-ubicaciones-label">
+                                Actualizar Ubicación
+                            </h5>
+                            <button
+                                type="button"
+                                className="close"
+                                data-dismiss="modal"
+                                aria-label="Close"
+                                onClick={() => {
+                                    const modal = new window.bootstrap.Modal(
+                                        document.getElementById("modal-ubicaciones")
+                                    );
+                                    modal.hide();
+                                }}
+                            >
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div className="modal-body">
+                            <form>
+                                <div className="form-group">
+                                    <label>Edificio</label>
+                                    <input
+                                        className="form-control"
+                                        name="edificio"
+                                        value={formData.edificio}
+                                        onChange={handleChange}
+                                        placeholder="Ej. K5"
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Departamento</label>
+                                    <input
+                                        className="form-control"
+                                        name="departamento"
+                                        value={formData.departamento}
+                                        onChange={handleChange}
+                                        placeholder="Ej. Tecnologías de la información"
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Área</label>
+                                    <input
+                                        className="form-control"
+                                        name="area"
+                                        value={formData.area}
+                                        onChange={handleChange}
+                                        placeholder="Ej. Laboratorio 108"
+                                    />
+                                </div>
+                            </form>
+                        </div>
+                        <div className="modal-footer">
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                data-dismiss="modal"
+                                onClick={() => {
+                                    const modal = new window.bootstrap.Modal(
+                                        document.getElementById("modal-ubicaciones")
+                                    );
+                                    modal.hide();
+                                }}
+                            >
+                                Cerrar
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-primary"
+                                onClick={handleActualizarUbicacion}
+                            >
+                                Actualizar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </>
     );
 };
