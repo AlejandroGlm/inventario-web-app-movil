@@ -1,25 +1,6 @@
 import { useState, useEffect } from "react";
 import { DTable, Footer, Menu, Navbar, Title } from "../components";
 import { useFetch } from "../hooks/useFetch.js";
-import QRCode from "react-qr-code";
-
-const columnas = [
-    { name: "Edificio", selector: (row) => row.edificio },
-    { name: "Departamento", selector: (row) => row.departamento },
-    { name: "Área", selector: (row) => row.area },
-    {
-        name: "Opciones",
-        selector: (row) => row.action,
-        cell: (props) => (
-            <button className="btn btn-info btn-sm" title="Editar ubicación">
-                <i className="fas fa-pen"></i>
-            </button>
-        ),
-        ignoreRowClick: true,
-        allowOverflow: true,
-        button: "true",
-    },
-];
 
 export const Ubicaciones = () => {
     const [formData, setFormData] = useState({
@@ -27,14 +8,9 @@ export const Ubicaciones = () => {
         departamento: "",
         area: "",
     });
-    const [ubicaciones, setUbicaciones] = useState([]); // Inicializamos como un array vacío
+    const [ubicaciones, setUbicaciones] = useState([]);
+    const [editData, setEditData] = useState(null);
     const { getData, setData } = useFetch();
-
-    // Manejar cambios en el formulario
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData({ ...formData, [name]: value });
-    };
 
     // Obtener ubicaciones al cargar la página
     useEffect(() => {
@@ -43,12 +19,10 @@ export const Ubicaciones = () => {
                 const response = await getData(
                     "http://localhost/codeigniter3-rest-controller/index.php/Api/Ubicacion"
                 );
-                console.log(response); // Verifica la respuesta de la API
-                
+                console.log("Datos obtenidos de la API:", response); // Verifica los datos aquí
                 if (!response.error) {
-                    // Extrae los datos relevantes desde el nivel correcto
                     const ubicacionesData = response.data?.data || [];
-                    setUbicaciones(ubicacionesData); // Actualiza el estado con los datos correctos
+                    setUbicaciones(ubicacionesData);
                 } else {
                     console.error("Error al obtener ubicaciones:", response.message);
                 }
@@ -56,11 +30,99 @@ export const Ubicaciones = () => {
                 console.error("Error al realizar la solicitud:", error);
             }
         };
-    
-        fetchUbicaciones();
-    }, []); // Ejecuta solo una vez al cargar el componente
 
-    // Manejar el envío del formulario
+        fetchUbicaciones();
+    }, []);
+
+    // Manejar cambios en el formulario
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData({ ...formData, [name]: value });
+    };
+
+    // Manejar la edición
+    const handleEdit = (ubicacion) => {
+        setEditData(ubicacion);
+        setFormData({
+            edificio: ubicacion.edificio,
+            departamento: ubicacion.departamento,
+            area: ubicacion.area,
+        });
+    };
+
+    const deleteData = async (url) => {
+        try {
+            const response = await fetch(url, {
+                method: "DELETE",
+            });
+            const data = await response.json();
+            return { data, error: !response.ok, message: data.message || response.statusText };
+        } catch (error) {
+            console.error("Error en la solicitud DELETE:", error);
+            return { error: true, message: error.message };
+        }
+    };
+
+
+    // Actualizar ubicación
+    const handleActualizarUbicacion = async () => {
+        if (!editData) return;
+
+        try {
+            const response = await setData(
+                `http://localhost/codeigniter3-rest-controller/index.php/Api/Ubicacion/${editData.id}`,
+                formData,
+                "PUT" // Especifica el método PUT para la actualización
+            );
+
+            console.log("Respuesta de la API:", response);
+
+            if (!response.error) {
+                alert("Ubicación actualizada correctamente");
+                setUbicaciones((prev) =>
+                    prev.map((item) =>
+                        item.id === editData.id ? { ...item, ...formData } : item
+                    )
+                );
+                setEditData(null);
+                setFormData({ edificio: "", departamento: "", area: "" });
+            } else {
+                alert("Error al actualizar la ubicación: " + response.message);
+            }
+        } catch (error) {
+            console.error("Error al actualizar la ubicación:", error);
+        }
+    };
+
+    // Eliminar ubicación
+    const handleEliminar = async (id) => {
+        console.log("Botón eliminar clickeado. ID:", id);
+        if (!id) return;
+    
+        try {
+            const response = await deleteData(
+                `http://localhost/codeigniter3-rest-controller/index.php/Api/Ubicacion/${id}`
+            );
+    
+            console.log("Respuesta de la API al eliminar:", response);
+    
+            if (!response.error) {
+                alert("Ubicación eliminada correctamente");
+                // Vuelve a consultar los datos para "refrescar" la tabla
+                fetchUbicaciones();
+            } else {
+                alert("Error al eliminar la ubicación: " + response.message);
+            }
+        } catch (error) {
+            console.error("Error al eliminar la ubicación:", error);
+        }
+    };
+    
+    
+
+   
+
+    // Agregar nueva ubicación
     const handleAgregarUbicacion = async () => {
         const { edificio, departamento, area } = formData;
 
@@ -69,19 +131,54 @@ export const Ubicaciones = () => {
             return;
         }
 
-        const response = await setData(
-            "http://localhost/codeigniter3-rest-controller/index.php/Api/Ubicacion",
-            formData
-        );
+        try {
+            const response = await setData(
+                "http://localhost/codeigniter3-rest-controller/index.php/Api/Ubicacion",
+                formData
+            );
 
-        if (!response.error) {
-            alert(response.message);
-            setUbicaciones((prev) => [...prev, formData]);  
-            setFormData({ edificio: "", departamento: "", area: "" });  
-        } else {
-            alert("Error al agregar la ubicación: " + response.message);
+            console.log("Respuesta de la API al agregar:", response);
+
+            if (!response.error) {
+                alert("Ubicación agregada correctamente");
+                setUbicaciones((prev) => [...prev, { ...formData, id: response.id }]);
+                setFormData({ edificio: "", departamento: "", area: "" });
+            } else {
+                alert("Error al agregar la ubicación: " + response.message);
+            }
+        } catch (error) {
+            console.error("Error al agregar la ubicación:", error);
         }
     };
+
+    const columnas = [
+        { name: "Edificio", selector: (row) => row.edificio },
+        { name: "Departamento", selector: (row) => row.departamento },
+        { name: "Área", selector: (row) => row.area },
+        {
+            name: "Opciones",
+            cell: (row) => (
+                <>
+                    <button
+                        className="btn btn-info btn-sm"
+                        title="Editar ubicación"
+                        onClick={() => handleEdit(row)}
+                    >
+                        <i className="fas fa-pen"></i>
+                    </button>
+                    <button
+                        className="btn btn-danger btn-sm ml-2"
+                        title="Eliminar ubicación"
+                        onClick={() => handleEliminar(row.id_ubicacion)} // Ajusta al nombre correcto
+                    >
+                        <i className="fas fa-trash"></i>
+                    </button>
+                </>
+            ),
+            ignoreRowClick: true,
+            allowOverflow: true,
+        },
+    ];
 
     return (
         <>
@@ -132,14 +229,20 @@ export const Ubicaciones = () => {
                                     </form>
                                 </div>
                                 <div className="card-footer">
-                                    <button className="btn btn-secondary" onClick={() => setFormData({ edificio: "", departamento: "", area: "" })}>
+                                    <button
+                                        className="btn btn-secondary"
+                                        onClick={() => {
+                                            setEditData(null);
+                                            setFormData({ edificio: "", departamento: "", area: "" });
+                                        }}
+                                    >
                                         Cancelar
                                     </button>
                                     <button
                                         className="btn btn-lg btn-warning float-right"
-                                        onClick={handleAgregarUbicacion}
+                                        onClick={editData ? handleActualizarUbicacion : handleAgregarUbicacion}
                                     >
-                                        Aceptar
+                                        {editData ? "Actualizar" : "Aceptar"}
                                     </button>
                                 </div>
                             </div>
@@ -160,31 +263,6 @@ export const Ubicaciones = () => {
                 </section>
             </div>
             <Footer />
-
-            {/* Modal QR (Opcional) */}
-            <div className="modal fade" id="modal-default">
-                <div className="modal-dialog">
-                    <div className="modal-content bg-warning">
-                        <div className="modal-header">
-                            <h4 className="modal-title">Código QR generado</h4>
-                            <button type="button" className="close" data-dismiss="modal" aria-label="Close">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
-                        </div>
-                        <div className="modal-body">
-                            <QRCode value="Este es mi código QR" />
-                        </div>
-                        <div className="modal-footer justify-content-between">
-                            <button type="button" className="btn btn-danger" data-dismiss="modal">
-                                Cerrar
-                            </button>
-                            <button type="button" className="btn btn-primary">
-                                Guardar cambios
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </>
     );
 };
