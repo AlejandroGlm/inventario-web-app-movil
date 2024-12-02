@@ -154,7 +154,14 @@ export const Mobiliario = () => {
         { name: "Estado", selector: (row) => row.estado },
         { name: "Activo", selector: (row) => row.activo ? "Sí" : "No" },
         { name: "Código", selector: (row) => row.codigo },
-        { name: "ID Ubicación", selector: (row) => row.id_ubicacion },
+        // Cambiar la columna de ID Ubicación para mostrar el nombre de la ubicación
+        {
+            name: "Ubicación",
+            selector: (row) => {
+                const ubicacion = ubicaciones.find(u => u.id_ubicacion === row.id_ubicacion);
+                return ubicacion ? `${ubicacion.edificio} - ${ubicacion.departamento} - ${ubicacion.area}` : "No disponible";
+            },
+        },
         {
             name: "QR",
             cell: (row) => (
@@ -185,7 +192,6 @@ export const Mobiliario = () => {
             ),
         },
     ];
-
     return (
         <>
             <Navbar />
