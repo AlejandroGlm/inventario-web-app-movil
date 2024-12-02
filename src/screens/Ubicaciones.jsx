@@ -3,6 +3,8 @@ import { DTable, Footer, Menu, Navbar, Title } from "../components";
 import { useFetch } from "../hooks/useFetch.js";
 
 export const Ubicaciones = () => {
+
+    //#region Metodos
     const [formData, setFormData] = useState({
         edificio: "",
         departamento: "",
@@ -11,6 +13,8 @@ export const Ubicaciones = () => {
     const [ubicaciones, setUbicaciones] = useState([]);
     const [editData, setEditData] = useState(null);
     const { getData, setData } = useFetch();
+
+
 
     // Obtener ubicaciones al cargar la página
     useEffect(() => {
@@ -192,17 +196,18 @@ export const Ubicaciones = () => {
                     <button
                         className="btn btn-danger btn-sm ml-2"
                         title="Eliminar ubicación"
-                        onClick={() => handleEliminar(row.id_ubicacion)} // Ajusta al nombre correcto
+                        onClick={() => handleEliminar(row.id_ubicacion)} 
                     >
                         <i className="fas fa-trash"></i>
                     </button>
                 </>
             ),
             ignoreRowClick: true,
-            //allowOverflow: true,
+            allowOverflow: true,
         },
     ];
 
+//#endregion
     return (
         <>
             <Navbar />
