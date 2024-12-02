@@ -121,10 +121,6 @@ export const Ubicaciones = () => {
         }
     };
     
-    
-    
-    
-
     // Eliminar ubicación
     const handleEliminar = async (id) => {
         console.log("Botón eliminar clickeado. ID:", id);
