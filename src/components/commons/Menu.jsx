@@ -54,14 +54,14 @@ export const Menu = ({ nombre, usuario }) => {
                                 </p>
                             </Link>
                         </li>
-                        <li className="nav-item">
+                        {/* <li className="nav-item">
                             <Link to="/usuarios" className="nav-link">
                                 <i className="nav-icon fas fa-user-lock"></i>
                                 <p>
                                     Usuarios
                                 </p>
                             </Link>
-                        </li>
+                        </li> */}
                     </ul>
                 </nav>
             </div>
