@@ -1,102 +1,147 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import * as echarts from "echarts";
-import { Navbar, Menu, Title, Footer, PieChart, BarsChart } from "../components";
+import { Navbar, Menu, Title, Footer } from "../components";
 import { useFetch } from "../hooks/useFetch";
 
 export const Informes = () => {
     const { getData } = useFetch();
     const [personas, setPersonas] = useState([]);
+    const [mobiliario, setMobiliario] = useState([]);
+    const [ubicaciones, setUbicaciones] = useState([]);
     const [filteredData, setFilteredData] = useState([]);
     const [barChartData, setBarChartData] = useState({ xAxis: [], series: [] });
     const [pieChartData, setPieChartData] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
-    const [searchCategory, setSearchCategory] = useState("persona"); // persona, ubicacion o mobiliario
+    const [searchCategory, setSearchCategory] = useState("persona");
+
+    // Referencias a los contenedores de los gráficos
+    const barChartRef = useRef(null);
+    const pieChartRef = useRef(null);
+    
+    useEffect(() => {
+        if (mobiliario.length > 0) {
+            updateCharts(mobiliario); // Mostrar gráfico de mobiliario al cargar la página
+        }
+    }, [mobiliario]);
 
     useEffect(() => {
-        const fetchPersonas = async () => {
+        const fetchData = async () => {
             try {
-                const response = await getData(
-                    "http://localhost/codeigniter3-rest-controller/index.php/Api/Mobiliario"
+                const responseMobiliario = await getData(
+                    "http://localhost/codeigniter3-rest-controller/index.php/Api/Mobiliario/"
                 );
-                if (!response.error) {
-                    const personasData = response.data?.data || [];
-                    setPersonas(personasData);
-                    setFilteredData(personasData); // Inicializa con todos los datos
-                    updateCharts(personasData);
-                } else {
-                    console.error("Error al obtener Personas:", response.message);
-                }
+                setMobiliario(responseMobiliario?.data?.data || []);
+
+                const responseUbicaciones = await getData(
+                    "http://localhost/codeigniter3-rest-controller/index.php/Api/Ubicacion/"
+                );
+                setUbicaciones(responseUbicaciones?.data?.data || []);
+
+                const responsePersonas = await getData(
+                    "http://localhost/codeigniter3-rest-controller/index.php/Api/Personas"
+                );
+                setPersonas(responsePersonas?.data?.data || []);
             } catch (error) {
-                console.error("Error al realizar la solicitud:", error);
+                console.error("Error al realizar las solicitudes:", error);
             }
         };
 
-        fetchPersonas();
+        fetchData();
     }, []);
 
     const updateCharts = (data) => {
-        const tipos = {};
+        const categories = {};
+    
+        // Detectar la estructura de los datos para determinar qué campo usar
         data.forEach((item) => {
-            const tipo = item.tipo || "Desconocido";
-            const cantidad = item.cantidad || 1;
-            if (tipos[tipo]) {
-                tipos[tipo] += cantidad;
+            let key = "Desconocido";
+    
+            if (item.nombre) {
+                // Es una persona
+                key = item.nombre;
+            } else if (item.edificio) {
+                // Es una ubicación
+                key = item.edificio;
+            } else if (item.tipo) {
+                // Es mobiliario
+                key = item.tipo;
+            }
+    
+            // Incrementar el conteo para la categoría correspondiente
+            if (categories[key]) {
+                categories[key] += 1;
             } else {
-                tipos[tipo] = cantidad;
+                categories[key] = 1;
             }
         });
-
-        const xAxis = Object.keys(tipos); // Categorías
-        const series = Object.values(tipos); // Valores
+    
+        const xAxis = Object.keys(categories); // Nombres de las categorías
+        const series = Object.values(categories); // Conteos
         const pieData = xAxis.map((key, index) => ({ name: key, value: series[index] }));
-
+    
         setBarChartData({ xAxis, series });
         setPieChartData(pieData);
     };
+    
+    
+
+    const handleSearch = async (e) => {
+        e.preventDefault();
+        console.log("Buscando:", searchTerm, "en categoría:", searchCategory);
+    
+        try {
+            let filtered = [];
+            if (searchCategory === "persona") {
+                filtered = personas.filter(persona =>
+                    persona.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
+                );
+            } else if (searchCategory === "ubicacion") {
+                filtered = ubicaciones.filter(ubicacion =>
+                    ubicacion.edificio?.toLowerCase().includes(searchTerm.toLowerCase())
+                );
+            } else if (searchCategory === "tipo") {
+                filtered = mobiliario.filter(item =>
+                    item.tipo?.toLowerCase().includes(searchTerm.toLowerCase())
+                );
+            }
+    
+            console.log("Datos filtrados:", filtered);
+            setFilteredData(filtered);
+            updateCharts(filtered); // Asegúrate de actualizar las gráficas con los datos filtrados
+        } catch (error) {
+            console.error("Error al realizar la búsqueda:", error);
+        }
+    };
+    
 
     useEffect(() => {
         if (barChartData.xAxis.length > 0 && barChartData.series.length > 0) {
-            const chartDom = document.getElementById("bar-chart");
-            const myChart = echarts.init(chartDom);
-            const option = {
-                title: { text: "Cantidad de Mobiliarios por Tipo", left: "center" },
+            const barChart = barChartRef.current;
+            const myChart = echarts.getInstanceByDom(barChart) || echarts.init(barChart);
+
+            myChart.setOption({
+                title: { text: "Cantidad por Tipo", left: "center" },
                 tooltip: { trigger: "axis" },
                 xAxis: { type: "category", data: barChartData.xAxis },
                 yAxis: { type: "value" },
                 series: [{ name: "Cantidad", type: "bar", data: barChartData.series }],
-            };
-            myChart.setOption(option);
+            });
         }
+    }, [barChartData]);
 
+    useEffect(() => {
         if (pieChartData.length > 0) {
-            const chartDom = document.getElementById("pie-chart");
-            const myChart = echarts.init(chartDom);
-            const option = {
-                title: { text: "Proporción de Mobiliarios", left: "center" },
+            const pieChart = pieChartRef.current;
+            const myChart = echarts.getInstanceByDom(pieChart) || echarts.init(pieChart);
+
+            myChart.setOption({
+                title: { text: "Proporción", left: "center" },
                 tooltip: { trigger: "item" },
                 legend: { bottom: "0" },
-                series: [
-                    {
-                        name: "Cantidad",
-                        type: "pie",
-                        radius: "50%",
-                        data: pieChartData,
-                    },
-                ],
-            };
-            myChart.setOption(option);
+                series: [{ name: "Cantidad", type: "pie", radius: "50%", data: pieChartData }],
+            });
         }
-    }, [barChartData, pieChartData]);
-
-    const handleSearch = (e) => {
-        e.preventDefault();
-        const filtered = personas.filter((item) => {
-            const value = item[searchCategory]?.toLowerCase() || "";
-            return value.includes(searchTerm.toLowerCase());
-        });
-        setFilteredData(filtered);
-        updateCharts(filtered);
-    };
+    }, [pieChartData]);
 
     return (
         <>
@@ -106,83 +151,61 @@ export const Informes = () => {
                 <Title title="Informes" breadcrums={["Personas", "Menú"]} />
                 <section className="content">
                     <div className="row">
-                        {/* Filtros */}
-                        <div className="col-4">
-                            <div className="card card-warning">
+                        <div className="col-md-6">
+                            <div className="card card-primary">
                                 <div className="card-header">
-                                    <h4 className="card-title">Seleccionar filtros</h4>
+                                    <h3 className="card-title">Buscar y Filtrar</h3>
                                 </div>
                                 <div className="card-body">
                                     <form onSubmit={handleSearch}>
                                         <div className="form-group">
-                                            <label>Empleado</label>
-                                            <select className="form-control">
-                                                <option>-Todos-</option>
-                                                {personas.map((persona) => (
-                                                    <option key={persona.id}>{persona.nombre}</option>
-                                                ))}
+                                            <label htmlFor="searchCategory">Categoría de Búsqueda</label>
+                                            <select
+                                                className="form-control"
+                                                id="searchCategory"
+                                                value={searchCategory}
+                                                onChange={(e) => setSearchCategory(e.target.value)}
+                                            >
+                                                <option value="persona">Persona</option>
+                                                <option value="ubicacion">Ubicación</option>
+                                                <option value="tipo">Mobiliario</option>
                                             </select>
                                         </div>
                                         <div className="form-group">
-                                            <label>Ubicación</label>
-                                            <select className="form-control">
-                                                <option>-Todas-</option>
-                                                <option>Administración</option>
-                                                <option>Recepción</option>
-                                            </select>
-                                        </div>
-                                        <div className="form-group">
-                                            <label>Tipo de artículo</label>
-                                            <select className="form-control">
-                                                <option>-Todos los tipos-</option>
-                                                <option>Muebles</option>
-                                                <option>Equipo de cómputo</option>
-                                                <option>Equipo de laboratorio</option>
-                                                <option>Artículo general</option>
-                                                <option>Otro</option>
-                                            </select>
-                                        </div>
-                                        <div className="form-group">
-                                            <label>Fecha</label>
-                                            <input type="date" className="form-control" />
+                                            <label htmlFor="searchTerm">Término de Búsqueda</label>
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                id="searchTerm"
+                                                placeholder="Ingrese término a buscar"
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                            />
                                         </div>
                                         <button type="submit" className="btn btn-primary">
                                             Buscar
                                         </button>
                                     </form>
                                 </div>
-                                <div className="card-footer">
-                                    <button className="btn btn-secondary">Cancelar</button>
-                                    <button className="btn btn-lg btn-primary float-right">Aceptar</button>
+                            </div>
+                        </div>
+                        <div className="col-md-6">
+                            <div className="card card-success">
+                                <div className="card-header">
+                                    <h3 className="card-title">Gráfica de Barras</h3>
+                                </div>
+                                <div className="card-body">
+                                    <div ref={barChartRef} style={{ width: "100%", height: "300px" }}></div>
                                 </div>
                             </div>
                         </div>
-
-                        {/* Gráficas */}
-                        <div className="col-8">
-                            <div className="row">
-                                {/* Gráfica de Pastel */}
-                                <div className="col-12">
-                                    <div className="card card-success">
-                                        <div className="card-header">
-                                            <h4 className="card-title">Distribución por Tipo (Pastel)</h4>
-                                        </div>
-                                        <div className="card-body">
-                                            <div id="pie-chart" style={{ width: "100%", height: "400px" }}></div>
-                                        </div>
-                                    </div>
+                        <div className="col-md-12">
+                            <div className="card card-warning">
+                                <div className="card-header">
+                                    <h3 className="card-title">Gráfica de Pastel</h3>
                                 </div>
-
-                                {/* Gráfica de Barras */}
-                                <div className="col-12">
-                                    <div className="card card-success">
-                                        <div className="card-header">
-                                            <h4 className="card-title">Cantidad por Tipo (Barras)</h4>
-                                        </div>
-                                        <div className="card-body">
-                                            <div id="bar-chart" style={{ width: "100%", height: "300px" }}></div>
-                                        </div>
-                                    </div>
+                                <div className="card-body">
+                                    <div ref={pieChartRef} style={{ width: "100%", height: "400px" }}></div>
                                 </div>
                             </div>
                         </div>
