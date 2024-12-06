@@ -6,7 +6,7 @@ export const useFetch = () => {
                 headers: new Headers({
                     "Accept": "*/*",
                     "Content-Type": "application/json",
-                    "User-Agent": "Thunder Client (https://www.thunderclient.com)",
+                    // "User-Agent": "Thunder Client (https://www.thunderclient.com)",
                 }),
             };
 
