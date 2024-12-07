@@ -5,7 +5,7 @@ import stockLogo from "../../../public/dist/img/logo-corporativo.jpeg";
 export const Menu = ({ nombre, usuario }) => {
     return (
         <aside className="main-sidebar sidebar-dark-primary elevation-4">
-            <a href="../../index.html" className="brand-link">
+            <a href="#" className="brand-link">
                 <img src={ stockLogo } alt="Logo de la aplicación" className="brand-image img-circle elevation-3" style={{ opacity: ".8"}} />
                 <span className="brand-text font-weight-light">{ nombre }</span>
             </a>
