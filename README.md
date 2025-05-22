@@ -49,6 +49,11 @@ npm run dev
 
 ---
 
+![image](https://github.com/user-attachments/assets/d3f98c01-8d95-4bf9-afe9-f3a9e997ac74)
+![image](https://github.com/user-attachments/assets/856ff4f3-c497-49a8-951f-201c0e27960e)
+
+
+
 ## 👨‍💻 Autor
 
 **Osvaldo Gaspar**  
